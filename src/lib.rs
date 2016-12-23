@@ -78,10 +78,10 @@ impl Service for WorldService {
     type Request = String;
     type Response = String;
     type Error = io::Error;
-    type Future = BoxFuture<String, io::Error>;
+    type Future = BoxFuture<Self::Response, Self::Error>;
 
-    fn call(&self, req: String) -> Self::Future {
-        if req.chars().find(|&c| c == '\n').is_some() {
+    fn call(&mut self, req: String) -> Self::Future {
+        if req.contains('\n') {
             Box::new(futures::failed(io::Error::new(io::ErrorKind::InvalidInput, "message contained new line")))
         } else {
             let resp = match req.as_str() {

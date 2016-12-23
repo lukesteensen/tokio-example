@@ -17,7 +17,7 @@ fn main() {
     let addr = "0.0.0.0:12345".parse().unwrap();
     let test = TcpClient::new(LineClientProto)
         .connect(&addr, &handle.clone())
-        .and_then(|client| {
+        .and_then(|mut client| {
             let req = "hello".into();
             println!("req: {:?}", req);
             client.call(req)
