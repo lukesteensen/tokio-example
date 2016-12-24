@@ -5,7 +5,7 @@ extern crate tokio_service as service;
 
 use std::{io, str};
 use std::net::SocketAddr;
-use futures::BoxFuture;
+use futures::future::FutureResult;
 use core::io::{Codec, EasyBuf, Framed, Io};
 use proto::TcpServer;
 use proto::pipeline::{ClientProto, ServerProto};
@@ -78,17 +78,17 @@ impl Service for WorldService {
     type Request = String;
     type Response = String;
     type Error = io::Error;
-    type Future = BoxFuture<Self::Response, Self::Error>;
+    type Future = FutureResult<Self::Response, Self::Error>;
 
     fn call(&mut self, req: String) -> Self::Future {
         if req.contains('\n') {
-            Box::new(futures::failed(io::Error::new(io::ErrorKind::InvalidInput, "message contained new line")))
+            futures::failed(io::Error::new(io::ErrorKind::InvalidInput, "message contained new line"))
         } else {
             let resp = match req.as_str() {
                 "hello" => "world".into(),
                 _ => "idk".into(),
             };
-            Box::new(futures::finished(resp))
+            futures::finished(resp)
         }
     }
 }
