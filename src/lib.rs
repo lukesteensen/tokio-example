@@ -72,9 +72,9 @@ impl<T: Io + 'static> ClientProto<T> for LineClientProto {
     }
 }
 
-struct WorldService;
+struct HelloWorldService;
 
-impl Service for WorldService {
+impl Service for HelloWorldService {
     type Request = String;
     type Response = String;
     type Error = io::Error;
@@ -98,6 +98,6 @@ pub struct Server;
 impl Server {
     pub fn serve(addr: SocketAddr) {
         TcpServer::new(LineServerProto, addr)
-            .serve(|| Ok(WorldService));
+            .serve(|| Ok(HelloWorldService));
     }
 }
