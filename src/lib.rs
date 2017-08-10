@@ -49,7 +49,6 @@ struct LineServerProto;
 impl<T: Io + 'static> ServerProto<T> for LineServerProto {
     type Request = String;
     type Response = String;
-    type Error = io::Error;
     type Transport = Framed<T, LineCodec>;
     type BindTransport = Result<Self::Transport, io::Error>;
 
@@ -63,7 +62,6 @@ pub struct LineClientProto;
 impl<T: Io + 'static> ClientProto<T> for LineClientProto {
     type Request = String;
     type Response = String;
-    type Error = io::Error;
     type Transport = Framed<T, LineCodec>;
     type BindTransport = Result<Self::Transport, io::Error>;
 
@@ -80,7 +78,7 @@ impl Service for HelloWorldService {
     type Error = io::Error;
     type Future = FutureResult<Self::Response, Self::Error>;
 
-    fn call(&mut self, req: String) -> Self::Future {
+    fn call(&self, req: String) -> Self::Future {
         if req.contains('\n') {
             futures::failed(io::Error::new(io::ErrorKind::InvalidInput, "message contained new line"))
         } else {
