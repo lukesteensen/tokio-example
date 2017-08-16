@@ -2,29 +2,33 @@ extern crate futures;
 extern crate tokio_core as core;
 extern crate tokio_proto as proto;
 extern crate tokio_service as service;
+extern crate tokio_io;
+extern crate bytes;
 
 use std::{io, str};
 use std::net::SocketAddr;
 use futures::future::FutureResult;
-use core::io::{Codec, EasyBuf, Framed, Io};
+use tokio_io::{AsyncRead, AsyncWrite};
+use tokio_io::codec::{Framed, Decoder, Encoder};
 use proto::TcpServer;
 use proto::pipeline::{ClientProto, ServerProto};
 use service::Service;
+use bytes::{BytesMut, BufMut};
 
 pub struct LineCodec;
 
-impl Codec for LineCodec {
-    type In = String;
-    type Out = String;
+impl Decoder for LineCodec {
+    type Item = String;
+    type Error = io::Error;
 
-    fn decode(&mut self, buf: &mut EasyBuf) -> Result<Option<Self::In>, io::Error> {
+    fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, io::Error> {
         // If our buffer contains a newline...
         if let Some(n) = buf.as_ref().iter().position(|b| *b == b'\n') {
             // remove this line and the newline from the buffer.
-            let line = buf.drain_to(n);
-            buf.drain_to(1); // Also remove the '\n'.
+            let line = buf.split_to(n);
+            buf.split_to(1); // Also remove the '\n'.
 
-            // Turn this data into a UTF string and return it in a Frame.
+            // Turn this data into a UTF-8 string and return it
             return match str::from_utf8(line.as_ref()) {
                 Ok(s) => Ok(Some(s.to_string())),
                 Err(_) => Err(io::Error::new(io::ErrorKind::Other, "invalid string")),
@@ -33,20 +37,25 @@ impl Codec for LineCodec {
 
         Ok(None)
     }
+}
 
-    fn encode(&mut self, msg: Self::Out, buf: &mut Vec<u8>) -> io::Result<()> {
+impl Encoder for LineCodec {
+    type Item = String;
+    type Error = io::Error;
+
+    fn encode(&mut self, msg: Self::Item, buf: &mut BytesMut) -> io::Result<()> {
         for byte in msg.as_bytes() {
-            buf.push(*byte);
+            buf.put_u8(*byte);
         }
 
-        buf.push(b'\n');
+        buf.put_u8(b'\n');
         Ok(())
     }
 }
 
 struct LineServerProto;
 
-impl<T: Io + 'static> ServerProto<T> for LineServerProto {
+impl<T: AsyncRead + AsyncWrite + 'static> ServerProto<T> for LineServerProto {
     type Request = String;
     type Response = String;
     type Transport = Framed<T, LineCodec>;
@@ -59,7 +68,7 @@ impl<T: Io + 'static> ServerProto<T> for LineServerProto {
 
 pub struct LineClientProto;
 
-impl<T: Io + 'static> ClientProto<T> for LineClientProto {
+impl<T: AsyncRead + AsyncWrite + 'static> ClientProto<T> for LineClientProto {
     type Request = String;
     type Response = String;
     type Transport = Framed<T, LineCodec>;
